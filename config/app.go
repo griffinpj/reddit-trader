@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Application AppConfig
 	Reddit RedditConfig
+	Store DBConfig
 }
 
 type AppConfig struct {
@@ -25,6 +26,14 @@ type RedditConfig struct {
 	ApiURL string
 }
 
+type DBConfig struct {
+	User string
+	Password string
+	Host string
+	Name string
+	Ssl string
+}
+
 // Return a pointer to the original config to avoid making copies
 func Load () (*Config, error) {
 	if err := godotenv.Load(); err != nil {
@@ -35,6 +44,13 @@ func Load () (*Config, error) {
 	cfg := &Config {
 		Application: AppConfig {
 			Port: getEnv("APP_PORT", "3333"), // need commas here for structs ...
+		},
+		Store: DBConfig {
+			User: getEnv("DB_USER", ""),
+			Password: getEnv("DB_PASSWORD", ""),
+			Host: getEnv("DB_HOST", ""),
+			Name: getEnv("DB_NAME", ""),
+			Ssl: getEnv("DB_SSL", "verify-full"),
 		},
 		Reddit: RedditConfig {
 			ClientId: getEnv("REDDIT_CLIENT_ID", ""),

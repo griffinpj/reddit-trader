@@ -2,7 +2,9 @@
 
 ## Usage 🔥
 ```
-  go run .
+    go get
+    go mod tidy
+    go run .
 ```
 
 ### Tooling 🛠️

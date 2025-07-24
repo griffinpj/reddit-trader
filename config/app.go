@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
 
@@ -32,6 +33,10 @@ type DBConfig struct {
 	Host string
 	Name string
 	Ssl string
+}
+
+type Env struct {
+	Pool * pgxpool.Pool
 }
 
 // Return a pointer to the original config to avoid making copies

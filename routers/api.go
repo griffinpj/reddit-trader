@@ -1,19 +1,40 @@
 package routers
 
 import (
+	"context"
+	"encoding/json"
+	"log"
 	"net/http"
-	
-	"github.com/go-chi/chi/v5"
+	"rtrade/config"
+	"rtrade/db"
 
-	Lib "rtrade/lib"
+	"github.com/go-chi/chi/v5"
 )
 
-func Api () chi.Router {
+func Api (env *config.Env) chi.Router {
 	r := chi.NewRouter();
 	
-	r.Get("/", func (w http.ResponseWriter, r *http.Request) {
-		Lib.Database();
-		w.Write([] byte("hello world!"));
+	r.Get("/users", func (w http.ResponseWriter, r *http.Request) {
+		conn, err := env.Pool.Acquire(context.Background())
+		if err != nil {
+			log.Panic("Error aquiring connection");
+		}
+
+		// Return the aquired db connection back to the connection pool from which it came!
+		defer conn.Release();
+
+		q := db.New(conn);
+		
+		var users [] db.User
+		users, err = q.GetUsers(r.Context())	
+		if err != nil {
+			log.Panic("Error getting users");
+		}
+
+		log.Println(users);
+		w.Header().Set("Content-Type", "application/json");
+		
+		json.NewEncoder(w).Encode(users);
 	});
 
 	return r;

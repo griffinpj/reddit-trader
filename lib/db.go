@@ -1,55 +1,41 @@
 package lib
 
 import (
+	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"time"
-	"golang.org/x/crypto/bcrypt"
-	"database/sql"
 	"log"
-	_ "github.com/lib/pq"
-	
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	Config "rtrade/config"
 )
 
-func Database () *sql.DB {
+func Database () * pgxpool.Pool {
 	var config *Config.Config;
+	var connectionStr string;
+	var pool * pgxpool.Pool;
 	var err error;
+
 	config, err = Config.Load();
 	if (err != nil) {
 		log.Fatal("Failed to load config for db");
 	}
 
-	connection := "postgres://" + config.Store.User + ":" + config.Store.Password + "@" + config.Store.Host + "/" + config.Store.Name + "?sslmode=" + config.Store.Ssl;
-	log.Println(connection);
-	
-	var db *sql.DB;
-	db, err = sql.Open("postgres", connection);
-
-	if (err != nil) {
-		log.Fatal("Failed to connect to db");
-	}
-	
-	err = db.Ping(); 
+	connectionStr = "postgres://" + config.Store.User + ":" + config.Store.Password + "@" + config.Store.Host + "/" + config.Store.Name + "?sslmode=" + config.Store.Ssl;
+	pool, err = pgxpool.New(context.Background(), connectionStr);
 	if err != nil {
-		log.Fatal("Failed to ping db");
+		log.Fatalf("Unable to connect to database: %v\n", err);
 	}
 
-	err = seedAdminUser(db);
-	if err != nil {
-		log.Fatal(err);
-		log.Fatal("Failed to insert admin user");
-	}
-
-	// createTables(db);
-	var rows *sql.Rows;
-	rows, err = db.Query("SELECT * FROM users");
-
-	log.Println(rows);
-
-	log.Println("Init DB");
-	return db;
+	// defer conn.Close(context.Background());
+	
+	return pool
 }
 
 // SeedAdminUser creates an initial admin user in the database
@@ -84,6 +70,7 @@ func seedAdminUser(db *sql.DB) error {
     // Hash password with salt
     // Note: bcrypt internally handles salting, so we're combining our salt with password for extra security
     combinedPassword := []byte(password + saltHex)
+
     hashedPassword, err := bcrypt.GenerateFromPassword(combinedPassword, bcrypt.DefaultCost)
     if err != nil {
         return fmt.Errorf("error hashing password: %w", err)

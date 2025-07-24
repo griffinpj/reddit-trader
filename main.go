@@ -9,8 +9,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	Routers "rtrade/routers"
 	Config "rtrade/config"
+	Lib "rtrade/lib"
+	Routers "rtrade/routers"
 )
 
 
@@ -22,6 +23,15 @@ func main () {
 	if err != nil {
 		panic("Failed to load application config");
 	}
+	
+	// Instantiate our DB pool and store in our App Env
+	pool := Lib.Database();
+	env := &Config.Env{ 
+		Pool: pool,
+	}
+	
+	// Close the db connection once things have finished
+	defer pool.Close();
 
 	// Initial router stack setup, https://github.com/go-chi/chi
 	var router = chi.NewRouter();
@@ -48,7 +58,7 @@ func main () {
 	// });
 	
 	// Handle API
-	router.Mount("/api", Routers.Api());
+	router.Mount("/api", Routers.Api(env));
 	
 	// Setup static files for React SPA
 	router.Mount("/static", Routers.Static());

@@ -14,6 +14,8 @@ import (
 func Api (env *config.Env) chi.Router {
 	r := chi.NewRouter();
 	
+	r.Use(env.Jwt.RequireAuth)
+
 	r.Get("/users", func (w http.ResponseWriter, r *http.Request) {
 		conn, err := env.Pool.Acquire(context.Background())
 		if err != nil {

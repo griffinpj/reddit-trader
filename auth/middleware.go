@@ -31,9 +31,31 @@ func (j *JWTManager) RequireNoAuth(next http.Handler) http.Handler {
 	})
 }
 
-
 // RequireAuth is a middleware that validates JWT tokens
 func (j *JWTManager) RequireAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get token from cookie
+		token, err := j.GetTokenFromCookie(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized);
+			return
+		}
+
+		// Validate token
+		claims, err := j.ValidateToken(token)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized);
+			return
+		}
+
+		// Add claims to context
+		ctx := context.WithValue(r.Context(), UserClaimsKey, claims)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// RequireAuth is a middleware that validates JWT tokens
+func (j *JWTManager) RequireAuthRedir(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Get token from cookie
 		token, err := j.GetTokenFromCookie(r)

@@ -60,7 +60,7 @@ func React (env * config.Env) chi.Router {
 	});
 
 	r.Group(func (r chi.Router) {
-		r.Use(env.Jwt.RequireAuth)
+		r.Use(env.Jwt.RequireAuthRedir)
 		r.HandleFunc("/*", func (w http.ResponseWriter, r *http.Request) {
 			pageData := map[string]interface{}{
 				"Vite": viteFragment,

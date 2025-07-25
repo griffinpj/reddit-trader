@@ -9,6 +9,38 @@ import (
 	"context"
 )
 
+const getUser = `-- name: GetUser :one
+SELECT id, email, username, password_hash, password_salt, first_name, last_name, display_name, bio, avatar_url, phone_number, is_active, is_verified, role, created_at, updated_at, last_login_at, email_verified_at, password_changed_at FROM users
+WHERE username = $1 OR email = $1
+`
+
+func (q *Queries) GetUser(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRow(ctx, getUser, username)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Username,
+		&i.PasswordHash,
+		&i.PasswordSalt,
+		&i.FirstName,
+		&i.LastName,
+		&i.DisplayName,
+		&i.Bio,
+		&i.AvatarUrl,
+		&i.PhoneNumber,
+		&i.IsActive,
+		&i.IsVerified,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.LastLoginAt,
+		&i.EmailVerifiedAt,
+		&i.PasswordChangedAt,
+	)
+	return i, err
+}
+
 const getUsers = `-- name: GetUsers :many
 SELECT id, email, username, password_hash, password_salt, first_name, last_name, display_name, bio, avatar_url, phone_number, is_active, is_verified, role, created_at, updated_at, last_login_at, email_verified_at, password_changed_at FROM users
 ORDER BY (first_name || last_name)

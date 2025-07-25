@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"rtrade/auth"
 )
 
 type Config struct {
@@ -37,6 +38,7 @@ type DBConfig struct {
 
 type Env struct {
 	Pool * pgxpool.Pool
+	Jwt * auth.JWTManager	
 }
 
 // Return a pointer to the original config to avoid making copies

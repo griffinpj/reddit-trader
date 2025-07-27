@@ -22,8 +22,6 @@ function Auth(props) {
             break;
     }
 
-    console.log(props);
-
     return (
         <Layout>
             <Header style={{ display: 'flex', alignItems: 'center' }}>

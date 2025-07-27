@@ -1,25 +1,34 @@
-import { Card, Typography, Form, Input, Checkbox, Button, Divider } from 'antd';
+import { Card, Typography, Form, Input, Checkbox, Button, Divider, Alert } from 'antd';
 const { Title } = Typography;
 import { UserOutlined, LockOutlined, MailOutlined, CheckOutlined } from '@ant-design/icons';
 import * as auth from '../../../lib/auth';
 import { useNavigate } from 'react-router';
+import { useState } from 'react';
 
 
 export default function () {
-    
     const navigate = useNavigate();
+    
+    const [alert, setAlert] = useState('');
+    const [loading, setLoading] = useState(false);
+
     const onSuccess = async values => {
         // TODO how to ensure csurf protection?
+        setLoading(true);
         const [err, data] = await auth.register(values);
         if (err) {
             console.error(err);
+            setAlert('Something went wrong. Please try again later.');
+            setLoading(false);
             return;
         }
 
-        // TODO show an alert for failed login data.message
         if (data?.message) {
+            setAlert(data.message);
+            setLoading(false);
             return;    
         }
+        setAlert('');
 
         // logged in successfully
         navigate('/login');
@@ -29,6 +38,7 @@ export default function () {
         console.log('Failed:', errorInfo);
     };
 
+    const RegisterAlert = alert ? <Alert type="error" message={alert} showIcon={true} /> : '';
     return (
         <Card style={{ width: 500 }}>
             <div style={{ display: "flex", justifyContent: "center" }}>
@@ -40,6 +50,9 @@ export default function () {
                 onFinishFailed={onFail}
                 autoComplete="off"
             >
+                <Form.Item>
+                    {RegisterAlert}
+                </Form.Item>
                 <Form.Item
                     name="first_name"
                     required={true}
@@ -93,6 +106,7 @@ export default function () {
 
                 <Form.Item label={null}>
                     <Button
+                        loading={loading}
                         type="primary"
                         htmlType="submit"
                         className="register-form-button"

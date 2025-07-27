@@ -32,8 +32,8 @@ export async function login (username, password) {
     }); 
 
     if (response.ok) {
-        return response.json();
+        return [null, await response.json()];
     }
 
-    return new Error('Failed to login');
+    return [new Error('Failed to login')];
 }

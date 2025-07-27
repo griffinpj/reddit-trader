@@ -45,7 +45,14 @@ func Auth (env *config.Env) chi.Router {
 		decoder := json.NewDecoder(r.Body);
 		err := decoder.Decode(&RegisterData)
 
-		// TODO check if confirm password and password match ...
+		if RegisterData.Password != RegisterData.Confirm {
+			w.Header().Set("Content-Type", "application/json");
+			
+			json.NewEncoder(w).Encode(ErrorResponse {
+				Message: "Passwords do not match",
+			});
+			return;
+		}
 
 		// Generate salt
 		salt := make([]byte, 16)
@@ -98,7 +105,6 @@ func Auth (env *config.Env) chi.Router {
 			return;
 		}
 
-		// TODO generate password and salt...
 		var newUser = db.CreateUserParams{
 			Email: RegisterData.Email,
 			Username: RegisterData.Username,
@@ -195,8 +201,6 @@ func Auth (env *config.Env) chi.Router {
 			return;
 		}
 
-		// TODO verified password
-		// TODO set auth cookie
 		token, err := env.Jwt.GenerateToken(string(user.ID), user.Email, user.Username);
 		if err != nil {
 			log.Println(err);

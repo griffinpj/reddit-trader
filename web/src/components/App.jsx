@@ -68,7 +68,10 @@ function App() {
                             icon: <LogoutOutlined />,
                             label: 'Logout',
                             onClick: async () => {
-                                return auth.logout()
+                                let err = await auth.logout();
+                                if (!err) {
+                                    navigate('/login');
+                                }
                             }
                         },
                     ]}

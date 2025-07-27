@@ -5,10 +5,24 @@ export async function logout () {
     }); 
 
     if (response.ok) {
-        window.location.reload();
+        return;
     }
 
     return new Error('Failed to logout');
+}
+
+export async function register (values) {
+    const response = await fetch('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(values)
+    }); 
+
+    if (response.ok) {
+        const data = await response.json();
+        return [null, data]; 
+    }
+
+    return [new Error('Failed to login')];
 }
 
 export async function login (username, password) {

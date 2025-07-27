@@ -7,7 +7,52 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const createUser = `-- name: CreateUser :one
+INSERT INTO users (
+    email, 
+    username, 
+    password_hash, 
+    password_salt,
+    first_name, 
+    last_name, 
+    is_active, 
+    role,
+    password_changed_at
+) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9 ) RETURNING id
+`
+
+type CreateUserParams struct {
+	Email             string
+	Username          string
+	PasswordHash      string
+	PasswordSalt      string
+	FirstName         pgtype.Text
+	LastName          pgtype.Text
+	IsActive          pgtype.Bool
+	Role              pgtype.Text
+	PasswordChangedAt pgtype.Timestamptz
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, error) {
+	row := q.db.QueryRow(ctx, createUser,
+		arg.Email,
+		arg.Username,
+		arg.PasswordHash,
+		arg.PasswordSalt,
+		arg.FirstName,
+		arg.LastName,
+		arg.IsActive,
+		arg.Role,
+		arg.PasswordChangedAt,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
 
 const getUser = `-- name: GetUser :one
 SELECT id, email, username, password_hash, password_salt, first_name, last_name, display_name, bio, avatar_url, phone_number, is_active, is_verified, role, created_at, updated_at, last_login_at, email_verified_at, password_changed_at FROM users
@@ -16,6 +61,38 @@ WHERE username = $1 OR email = $1
 
 func (q *Queries) GetUser(ctx context.Context, username string) (User, error) {
 	row := q.db.QueryRow(ctx, getUser, username)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Username,
+		&i.PasswordHash,
+		&i.PasswordSalt,
+		&i.FirstName,
+		&i.LastName,
+		&i.DisplayName,
+		&i.Bio,
+		&i.AvatarUrl,
+		&i.PhoneNumber,
+		&i.IsActive,
+		&i.IsVerified,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.LastLoginAt,
+		&i.EmailVerifiedAt,
+		&i.PasswordChangedAt,
+	)
+	return i, err
+}
+
+const getUserById = `-- name: GetUserById :one
+SELECT id, email, username, password_hash, password_salt, first_name, last_name, display_name, bio, avatar_url, phone_number, is_active, is_verified, role, created_at, updated_at, last_login_at, email_verified_at, password_changed_at FROM users
+WHERE id = $1
+`
+
+func (q *Queries) GetUserById(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRow(ctx, getUserById, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -84,4 +161,38 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const loginEvent = `-- name: LoginEvent :exec
+UPDATE users 
+SET last_login_at = $1
+WHERE id = $2
+`
+
+type LoginEventParams struct {
+	LastLoginAt pgtype.Timestamptz
+	ID          int64
+}
+
+func (q *Queries) LoginEvent(ctx context.Context, arg LoginEventParams) error {
+	_, err := q.db.Exec(ctx, loginEvent, arg.LastLoginAt, arg.ID)
+	return err
+}
+
+const userExists = `-- name: UserExists :one
+SELECT EXISTS (
+    SELECT 1 FROM users WHERE username = $1 OR email = $2
+)
+`
+
+type UserExistsParams struct {
+	Username string
+	Email    string
+}
+
+func (q *Queries) UserExists(ctx context.Context, arg UserExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, userExists, arg.Username, arg.Email)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }

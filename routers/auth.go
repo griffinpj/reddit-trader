@@ -2,20 +2,23 @@ package routers
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"log"
 	"net/http"
 	"rtrade/config"
 	"rtrade/db"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func Auth (env *config.Env) chi.Router {
 	r := chi.NewRouter();
-
 	type ErrorResponse struct {
 		Message string `json:"message"`
 	}
@@ -28,6 +31,106 @@ func Auth (env *config.Env) chi.Router {
 			Message: "Logout successful",
 		});
 	});
+
+	r.Post("/register", func (w http.ResponseWriter, r *http.Request) {
+		var RegisterData struct {
+			FirstName string `json:"first_name"`
+			LastName string `json:"last_name"`
+			Email string `json:"email"`
+			Username string `json:"username"`
+			Password string `json:"password"`
+			Confirm string `json:"password-confirm"`
+		}
+
+		decoder := json.NewDecoder(r.Body);
+		err := decoder.Decode(&RegisterData)
+
+		// TODO check if confirm password and password match ...
+
+		// Generate salt
+		salt := make([]byte, 16)
+		if _, err := rand.Read(salt); err != nil {
+			log.Println(err);
+			http.Error(w, err.Error(), http.StatusInternalServerError);
+			return;
+		}
+
+		saltHex := hex.EncodeToString(salt)
+
+		// Hash password with salt
+		// Note: bcrypt internally handles salting, so we're combining our salt with password for extra security
+		combinedPassword := []byte(RegisterData.Password + saltHex)
+
+		hashedPassword, err := bcrypt.GenerateFromPassword(combinedPassword, bcrypt.DefaultCost)
+		if err != nil {
+			log.Println(err);
+			http.Error(w, err.Error(), http.StatusInternalServerError);
+			return;
+		}
+
+		conn, err := env.Pool.Acquire(context.Background())
+		if err != nil {
+			log.Println(err);
+			http.Error(w, err.Error(), http.StatusInternalServerError);
+			return;
+		}
+
+		// Return the aquired db connection back to the connection pool from which it came!
+		defer conn.Release();
+		q := db.New(conn);
+
+		alreadyExists, err := q.UserExists(context.Background(), db.UserExistsParams{
+			Username: RegisterData.Username,
+			Email: RegisterData.Email,
+		})
+		if err != nil {
+			log.Println(err);
+			http.Error(w, err.Error(), http.StatusInternalServerError);
+			return;
+		}
+
+		if alreadyExists {
+			w.Header().Set("Content-Type", "application/json");
+			
+			json.NewEncoder(w).Encode(ErrorResponse {
+				Message: "Username or Email is already taken",
+			});
+			return;
+		}
+
+		// TODO generate password and salt...
+		var newUser = db.CreateUserParams{
+			Email: RegisterData.Email,
+			Username: RegisterData.Username,
+			PasswordHash: string(hashedPassword),
+			PasswordSalt: saltHex,
+			FirstName: pgtype.Text{ String: RegisterData.FirstName, Valid: true, },
+			LastName: pgtype.Text{ String: RegisterData.LastName, Valid: true, },
+			IsActive: pgtype.Bool{ Bool: true, Valid: true, },
+			Role: pgtype.Text{ String: "user", Valid: true, },
+			PasswordChangedAt: pgtype.Timestamptz{ Time: time.Now(), Valid: true, },
+		}
+	
+		id, err := q.CreateUser(context.Background(), newUser);
+		if err != nil && err != pgx.ErrNoRows {
+			log.Println(err);
+			http.Error(w, err.Error(), http.StatusInternalServerError);
+			return;
+		}
+
+		if err == pgx.ErrNoRows {
+			w.Header().Set("Content-Type", "application/json");
+			
+			json.NewEncoder(w).Encode(ErrorResponse {
+				Message: "Something went wrong creating your account",
+			});
+			return;
+		}
+
+		w.Header().Set("Content-Type", "application/json");
+		json.NewEncoder(w).Encode(id);
+	});
+
 	
 	r.Post("/login", func (w http.ResponseWriter, r *http.Request) {
 		var LoginData struct {
@@ -64,6 +167,20 @@ func Auth (env *config.Env) chi.Router {
 			json.NewEncoder(w).Encode(ErrorResponse {
 				Message: "Username does not exist",
 			});
+			return;
+		}
+
+		err = q.LoginEvent(context.Background(), db.LoginEventParams{ 
+			ID: user.ID, 
+			LastLoginAt: pgtype.Timestamptz{ 
+				Time: time.Now(),
+				Valid: true,
+			},
+		});
+
+		if err != nil {
+			log.Println(err);
+			http.Error(w, err.Error(), http.StatusInternalServerError);
 			return;
 		}
 

@@ -46,6 +46,7 @@ func React (env * config.Env) chi.Router {
 	
 	r.Use(middleware.NoCache);
 	
+	// Only allow visiting these pages if user is not logged in
 	r.Group(func (r chi.Router) {
 		r.Use(env.Jwt.RequireNoAuth)
 		r.HandleFunc("/login", func (w http.ResponseWriter, r *http.Request) {
@@ -57,8 +58,19 @@ func React (env * config.Env) chi.Router {
 				http.Error(w, err.Error(), http.StatusInternalServerError);
 			}
 		});
+		
+		r.HandleFunc("/register", func (w http.ResponseWriter, r *http.Request) {
+			pageData := map[string]interface{}{
+				"Vite": viteFragment,
+			}
+			
+			if err = tmpl.Execute(w, pageData); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError);
+			}
+		});
 	});
-
+	
+	// Enforce user must be logged in for these pages
 	r.Group(func (r chi.Router) {
 		r.Use(env.Jwt.RequireAuthRedir)
 		r.HandleFunc("/*", func (w http.ResponseWriter, r *http.Request) {

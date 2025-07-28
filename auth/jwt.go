@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Config holds JWT configuration
@@ -18,13 +19,15 @@ type Config struct {
 	CookieSecure   bool
 	CookieHTTPOnly bool
 	CookieSameSite http.SameSite
+	Pool *pgxpool.Pool
 }
 
 // Claims represents the JWT claims
 type Claims struct {
-	UserID   string `json:"user_id"`
+	UserID   int64 `json:"user_id"`
 	Email    string `json:"email"`
 	Username string `json:"username"`
+	RedditToken Token `json:"reddit_token"`
 	jwt.RegisteredClaims
 }
 
@@ -52,12 +55,26 @@ func NewJWTManager(config Config) *JWTManager {
 	}
 }
 
+type Token struct {
+	AccessToken string
+	RefreshToken string
+	Type string
+}
+
+type ClaimsData struct {
+	UserId int64
+	Email string
+	Username string
+	RedditToken Token
+}
+
 // GenerateToken creates a new JWT token
-func (j *JWTManager) GenerateToken(userID, email, username string) (string, error) {
+func (j *JWTManager) GenerateToken(claimsData * ClaimsData) (string, error) {
 	claims := &Claims{
-		UserID:   userID,
-		Email:    email,
-		Username: username,
+		UserID:   claimsData.UserId,
+		Email:    claimsData.Email,
+		Username: claimsData.Username,
+		RedditToken: claimsData.RedditToken,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.config.TokenExpiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

@@ -4,11 +4,13 @@ package config
 
 import (
 	"log"
+	"net/http"
 	"os"
+
+	Auth "rtrade/auth"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
-	"rtrade/auth"
 )
 
 type Config struct {
@@ -26,6 +28,8 @@ type RedditConfig struct {
 	ClientSecret string
 	TokenURL string
 	ApiURL string
+	RedirectUrl string
+	State string
 }
 
 type DBConfig struct {
@@ -36,9 +40,17 @@ type DBConfig struct {
 	Ssl string
 }
 
+
+// Client handles Reddit OAuth operations
+type RedditClient struct {
+    config     * RedditConfig
+    httpClient * http.Client
+}
+
 type Env struct {
 	Pool * pgxpool.Pool
-	Jwt * auth.JWTManager	
+	Jwt * Auth.JWTManager
+	Config * Config
 }
 
 // Return a pointer to the original config to avoid making copies
@@ -61,9 +73,11 @@ func Load () (*Config, error) {
 		},
 		Reddit: RedditConfig {
 			ClientId: getEnv("REDDIT_CLIENT_ID", ""),
+			RedirectUrl: getEnv("REDDIT_REDIRECT", ""),
             ClientSecret: getEnv("REDDIT_CLIENT_SECRET", ""),
             TokenURL: getEnv("REDDIT_TOKEN_URL", "https://ssl.reddit.com/api/v1/access_token"),
             ApiURL: getEnv("REDDIT_API_URL", "https://oauth.reddit.com/api/v1"),
+			State: getEnv("REDDIT_STATE", ""),
 		},
 	}
 

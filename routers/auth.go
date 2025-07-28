@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"rtrade/auth"
 	"rtrade/config"
 	"rtrade/db"
 	"time"
@@ -200,8 +201,19 @@ func Auth (env *config.Env) chi.Router {
 			});
 			return;
 		}
+		
+		var claimsData = &auth.ClaimsData{
+			UserId: user.ID,
+			Email: user.Email,
+			Username: user.Username,
+			RedditToken: auth.Token{
+				AccessToken: "",
+				RefreshToken: "",
+				Type: "",
+			},
+		}
 
-		token, err := env.Jwt.GenerateToken(string(user.ID), user.Email, user.Username);
+		token, err := env.Jwt.GenerateToken(claimsData);
 		if err != nil {
 			log.Println(err);
 			http.Error(w, err.Error(), http.StatusInternalServerError);

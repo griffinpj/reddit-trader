@@ -24,6 +24,10 @@ func main() {
 		panic("Failed to load application config")
 	}
 
+
+
+	// Instantiate our DB pool and store in our App Env
+	pool := Lib.Database()
 	jwt := auth.NewJWTManager(auth.Config{
 		SecretKey:      "your-secret-key-here", // Use environment variable in production
 		TokenExpiry:    24 * time.Hour,
@@ -31,13 +35,13 @@ func main() {
 		CookieDomain:   "",    // Set your domain
 		CookieSecure:   false, // Set to true in production with HTTPS
 		CookieSameSite: http.SameSiteLaxMode,
+		Pool: pool,
 	})
 
-	// Instantiate our DB pool and store in our App Env
-	pool := Lib.Database()
 	env := &Config.Env{
 		Pool: pool,
 		Jwt: jwt,
+		Config: config,
 	}
 
 	// Close the db connection once things have finished
